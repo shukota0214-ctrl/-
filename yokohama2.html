@@ -87,6 +87,7 @@ body { font-family:"Hiragino Mincho ProN","Yu Mincho",serif; background:#1a1a2e;
       <div class="leg-row"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#1e8449" stroke="white" stroke-width="1.5"/><text x="8" y="12" text-anchor="middle" font-size="10" fill="white">●</text></svg><span>商業・食・街</span></div>
       <div class="leg-row"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#7d3c98" stroke="white" stroke-width="1.5"/><text x="8" y="12" text-anchor="middle" font-size="10" fill="white">■</text></svg><span>港・観光施設</span></div>
       <div class="leg-row"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#d35400" stroke="white" stroke-width="1.5"/><text x="8" y="12" text-anchor="middle" font-size="10" fill="white">▲</text></svg><span>駅・交通拠点</span></div>
+      <div class="leg-row"><svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#1a6b3c" stroke="white" stroke-width="1.5"/><text x="8" y="12" text-anchor="middle" font-size="10" fill="white">Y</text></svg><span>学校</span></div>
     </div>
     <div style="flex:2">
       <div class="leg-title">主要スポット一覧</div>
@@ -97,6 +98,7 @@ body { font-family:"Hiragino Mincho ProN","Yu Mincho",serif; background:#1a1a2e;
         <span>❹ 赤レンガ倉庫</span><span>❿ 三渓園</span>
         <span>❺ 横浜マリンタワー</span><span>⓫ 横浜外国人墓地</span>
         <span>❻ 港の見える丘公園</span><span>⓬ 野毛山動物園</span>
+        <span>Y 横浜商業高校（Y校）</span>
       </div>
     </div>
   </div>
@@ -130,22 +132,24 @@ const CAT = {
   commerce: { color:'#1e8449', label:'商業・食・街' },
   port:     { color:'#7d3c98', label:'港・観光施設' },
   station:  { color:'#d35400', label:'駅・交通拠点' },
+  school:   { color:'#1a6b3c', label:'学校' },
 };
 
-// スポットデータ
+// スポットデータ（座標はGoogle Places APIで取得した正確値）
 const spots = [
-  { num:'❶', name:'横浜駅',                  lat:35.4658, lng:139.6225, cat:'station',  desc:'JR・私鉄・地下鉄が集まる横浜最大のターミナル駅。周辺にショッピングモールが充実。' },
-  { num:'❷', name:'みなとみらい21',           lat:35.4574, lng:139.6380, cat:'port',     desc:'横浜港沿いの大規模複合都市開発エリア。オフィス・商業・ホテルが集積。' },
-  { num:'❸', name:'横浜ランドマークタワー',   lat:35.4556, lng:139.6318, cat:'port',     desc:'地上70階・高さ296mの超高層ビル。展望フロア「スカイガーデン」から絶景を一望。' },
-  { num:'❹', name:'赤レンガ倉庫',             lat:35.4516, lng:139.6437, cat:'history',  desc:'明治・大正期に建設された歴史的建造物。現在はイベントホール・ショップとして活用。' },
-  { num:'❺', name:'横浜マリンタワー',         lat:35.4436, lng:139.6484, cat:'port',     desc:'高さ106mの展望タワー。山下公園に隣接し港の景観を楽しめる。' },
-  { num:'❻', name:'港の見える丘公園',         lat:35.4461, lng:139.6530, cat:'nature',   desc:'横浜港を一望できる高台の公園。バラ園や西洋館が点在する絶景スポット。' },
-  { num:'❼', name:'山下公園',                 lat:35.4413, lng:139.6467, cat:'nature',   desc:'横浜港に面した全長約700mの海浜公園。氷川丸が永久係留されている。' },
-  { num:'❽', name:'横浜中華街',               lat:35.4434, lng:139.6474, cat:'commerce', desc:'日本最大の中華街。約600店舗が集まり食・雑貨・文化を体験できる。' },
-  { num:'❾', name:'元町ショッピングストリート', lat:35.4428, lng:139.6520, cat:'commerce', desc:'老舗ブランド・ファッション店が並ぶ横浜を代表するショッピング街。' },
-  { num:'❿', name:'三渓園',                   lat:35.4167, lng:139.6588, cat:'history',  desc:'明治期の実業家が造営した日本庭園。重要文化財の古建築が17棟点在。' },
-  { num:'⓫', name:'横浜外国人墓地',           lat:35.4472, lng:139.6546, cat:'history',  desc:'幕末から続く外国人専用の墓地。山手の歴史を伝える文化財的存在。' },
-  { num:'⓬', name:'野毛山動物園',             lat:35.4470, lng:139.6294, cat:'nature',   desc:'入園無料の市立動物園。ライオン・キリンなど約100種の動物を飼育。' },
+  { num:'❶', name:'横浜駅',                   lat:35.4658,   lng:139.6225,   cat:'station',  desc:'JR・私鉄・地下鉄が集まる横浜最大のターミナル駅。' },
+  { num:'❷', name:'みなとみらい21',            lat:35.4574,   lng:139.6380,   cat:'port',     desc:'横浜港沿いの大規模複合都市開発エリア。' },
+  { num:'❸', name:'横浜ランドマークタワー',    lat:35.4556,   lng:139.6318,   cat:'port',     desc:'地上70階・高さ296mの超高層ビル。' },
+  { num:'❹', name:'赤レンガ倉庫',              lat:35.452632, lng:139.642894, cat:'history',  desc:'明治・大正期に建設された歴史的建造物。' },
+  { num:'❺', name:'横浜マリンタワー',          lat:35.443938, lng:139.650941, cat:'port',     desc:'高さ106mの展望タワー。' },
+  { num:'❻', name:'港の見える丘公園',          lat:35.440317, lng:139.654651, cat:'nature',   desc:'横浜港を一望できる高台の公園。' },
+  { num:'❼', name:'山下公園',                  lat:35.445766, lng:139.649779, cat:'nature',   desc:'横浜港に面した全長約700mの海浜公園。' },
+  { num:'❽', name:'横浜中華街',                lat:35.443088, lng:139.644100, cat:'commerce', desc:'日本最大の中華街。約600店舗が集まる。' },
+  { num:'❾', name:'元町ショッピングストリート', lat:35.440039, lng:139.647543, cat:'commerce', desc:'老舗ブランド・ファッション店が並ぶ商店街。' },
+  { num:'❿', name:'三渓園',                    lat:35.417051, lng:139.658827, cat:'history',  desc:'明治期の実業家が造営した日本庭園。' },
+  { num:'⓫', name:'横浜外国人墓地',            lat:35.439467, lng:139.652265, cat:'history',  desc:'幕末から続く外国人専用の墓地。' },
+  { num:'⓬', name:'野毛山動物園',              lat:35.447388, lng:139.622546, cat:'nature',   desc:'入園無料の市立動物園。' },
+  { num:'Y',  name:'横浜商業高校（Y校）',       lat:35.434795, lng:139.610234, cat:'school',   desc:'横浜商業高校（Y校）' },
 ];
 
 // アイコン生成

@@ -195,79 +195,57 @@ spots.forEach(function(s) {
   marker.addTo(map);
 });
 
-// ===== Canvasでエリア囲み・補助線描画 =====
-const canvas = document.getElementById('anno-canvas');
-const ctx = canvas.getContext('2d');
+// ===== Leaflet L.circle でエリア囲み（ズーム連動） =====
+// radiusはメートル単位 → ズームしても地理的に正しいサイズで描画される
 
-function ll2px(lat, lng) {
-  const pt = map.latLngToContainerPoint(L.latLng(lat, lng));
-  return [pt.x, pt.y];
+function addAreaCircle(lat, lng, radiusM, color, label) {
+  const circle = L.circle([lat, lng], {
+    radius: radiusM,
+    color: color,
+    weight: 2,
+    opacity: 0.6,
+    fillColor: color,
+    fillOpacity: 0.06,
+    dashArray: '7, 5',
+  }).addTo(map);
+
+  // ラベルは円の北端付近にtooltipで表示
+  const labelLat = lat + (radiusM / 111320); // 緯度方向にradiusM分ずらす
+  L.marker([labelLat, lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="
+        font-family:'Hiragino Mincho ProN','Yu Mincho',serif;
+        font-size:11px; font-weight:bold;
+        color:${color};
+        white-space:nowrap;
+        text-shadow:1px 1px 0 white,-1px -1px 0 white,1px -1px 0 white,-1px 1px 0 white;
+        pointer-events:none;
+      ">${label}</div>`,
+      iconAnchor: [0, 16],
+    }),
+    interactive: false,
+  }).addTo(map);
 }
 
-// 破線の丸囲みエリア
-function drawAreaCircle(lat, lng, radiusPx, color, label) {
-  const [cx, cy] = ll2px(lat, lng);
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 4]);
-  ctx.globalAlpha = 0.55;
-  ctx.beginPath();
-  ctx.arc(cx, cy, radiusPx, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-
-  // エリアラベル
-  if (label) {
-    ctx.save();
-    ctx.font = 'bold 11px "Hiragino Mincho ProN","Yu Mincho",serif';
-    ctx.fillStyle = color;
-    ctx.globalAlpha = 0.85;
-    ctx.textAlign = 'center';
-    ctx.fillText(label, cx, cy - radiusPx - 5);
-    ctx.restore();
-  }
+// エリア間の補助線（L.polyline で破線）
+function addRouteLine(from, to) {
+  L.polyline([from, to], {
+    color: '#999',
+    weight: 1.5,
+    opacity: 0.45,
+    dashArray: '4, 6',
+  }).addTo(map);
 }
 
-// エリア間の案内ルート線
-function drawRouteLine(from, to, color) {
-  const [fx, fy] = ll2px(from[0], from[1]);
-  const [tx, ty] = ll2px(to[0],   to[1]);
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([4, 5]);
-  ctx.globalAlpha = 0.45;
-  ctx.beginPath();
-  ctx.moveTo(fx, fy);
-  ctx.lineTo(tx, ty);
-  ctx.stroke();
-  ctx.restore();
-}
+// エリア囲み（半径はメートル）
+addAreaCircle(35.456,  139.629, 700, '#7d3c98', 'みなとみらいエリア');
+addAreaCircle(35.4415, 139.648, 700, '#c0392b', '山下・中華街エリア');
+addAreaCircle(35.446,  139.653, 420, '#1a5276', '元町・山手エリア');
 
-function redraw() {
-  const w = document.getElementById('map').offsetWidth;
-  const h = document.getElementById('map').offsetHeight;
-  canvas.width = w;
-  canvas.height = h;
-  ctx.clearRect(0, 0, w, h);
-
-  // エリア囲み（破線円）
-  drawAreaCircle(35.456, 139.629, 65, '#7d3c98', 'みなとみらいエリア');
-  drawAreaCircle(35.443, 139.648, 70, '#c0392b', '山下・中華街エリア');
-  drawAreaCircle(35.446, 139.652, 42, '#1a5276', '元町・山手エリア');
-
-  // エリア間の補助線
-  drawRouteLine([35.456, 139.629], [35.443, 139.648], '#888');
-  drawRouteLine([35.443, 139.648], [35.446, 139.652], '#888');
-}
-
-map.on('move', redraw);
-map.on('zoom', redraw);
-map.on('moveend', redraw);
-map.on('zoomend', redraw);
-setTimeout(redraw, 400);
-setTimeout(redraw, 1000);
+// エリア間補助線
+addRouteLine([35.456, 139.629], [35.4415, 139.648]);
+addRouteLine([35.4415, 139.648], [35.446, 139.653]);
 </script>
 </body>
 </html>

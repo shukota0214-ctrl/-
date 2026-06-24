@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主題図：横浜市 朝の人口移動</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Hiragino Mincho ProN","Yu Mincho",serif; background:#1a1a2e; }
+.page-wrap {
+  width:210mm; min-height:297mm; margin:20px auto;
+  background:#faf8f2;
+  box-shadow:0 4px 32px rgba(0,0,0,0.35);
+  display:flex; flex-direction:column;
+  padding:10mm 10mm 10mm 10mm;
+}
+.header {
+  text-align:center;
+  border-bottom:2.5px solid #1a1a2e;
+  padding-bottom:6px; margin-bottom:8px;
+}
+.header h1 { font-size:18px; letter-spacing:5px; color:#1a1a2e; }
+.header p  { font-size:10px; color:#555; margin-top:3px; letter-spacing:1.5px; }
+.map-container { position:relative; width:100%; height:185mm; }
+#map { width:100%; height:100%; border:1.5px solid #666; }
+#arrow-canvas {
+  position:absolute; top:0; left:0;
+  width:100%; height:100%;
+  pointer-events:none;
+  z-index:450;
+}
+.legend-box {
+  margin-top:8px; border:1.2px solid #aaa;
+  padding:7px 12px; background:#fdfcf7;
+  display:flex; gap:18px; flex-wrap:wrap;
+}
+.leg-title { font-size:10px; font-weight:bold; margin-bottom:4px; border-bottom:1px solid #ddd; padding-bottom:2px; color:#1a1a2e; }
+.leg-row { display:flex; align-items:center; gap:7px; font-size:9px; margin-bottom:3px; }
+.note { margin-top:7px; font-size:8.5px; color:#555; line-height:1.7; border-left:3px solid #999; padding-left:8px; }
+.footer-line { margin-top:8px; font-size:9px; color:#888; border-top:1px solid #ddd; padding-top:5px; display:flex; justify-content:space-between; }
+.flow-label { background:rgba(255,255,255,0.88); border:1px solid #999; border-radius:3px; padding:1px 5px; font-size:11px; font-weight:bold; white-space:nowrap; }
+@media print { body { background:white; } .page-wrap { margin:0; box-shadow:none; } }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="header">
+    <h1>主　題　図</h1>
+    <p>横浜市中心部　朝の人口移動（通勤・通学）　7:00〜9:00</p>
+  </div>
+  <div class="map-container">
+    <div id="map"></div>
+    <canvas id="arrow-canvas"></canvas>
+  </div>
+
+  <div class="legend-box">
+    <div style="flex:1.5">
+      <div class="leg-title">矢印の太さ ＝ 移動人口規模（推定）</div>
+      <div class="leg-row"><svg width="70" height="22"><path d="M5 11 L52 11" fill="none" stroke="#1a5276" stroke-width="14" stroke-linecap="round" opacity="0.82"/><polygon points="50,4 70,11 50,18" fill="#1a5276"/></svg><span>約２万人以上（最大）</span></div>
+      <div class="leg-row"><svg width="70" height="18"><path d="M5 9 L52 9" fill="none" stroke="#c0392b" stroke-width="10" stroke-linecap="round" opacity="0.82"/><polygon points="50,3 68,9 50,15" fill="#c0392b"/></svg><span>約１〜１．５万人</span></div>
+      <div class="leg-row"><svg width="70" height="14"><path d="M5 7 L52 7" fill="none" stroke="#1e8449" stroke-width="7" stroke-linecap="round" opacity="0.82"/><polygon points="50,2 66,7 50,12" fill="#1e8449"/></svg><span>約７千〜１万人</span></div>
+      <div class="leg-row"><svg width="70" height="12"><path d="M5 6 L52 6" fill="none" stroke="#7d3c98" stroke-width="5" stroke-linecap="round" opacity="0.82"/><polygon points="50,1 65,6 50,11" fill="#7d3c98"/></svg><span>約５千〜７千人</span></div>
+      <div class="leg-row"><svg width="70" height="10"><path d="M5 5 L51 5" fill="none" stroke="#d35400" stroke-width="3.5" stroke-linecap="round" opacity="0.82"/><polygon points="49,1 64,5 49,9" fill="#d35400"/></svg><span>約３千〜５千人</span></div>
+    </div>
+    <div style="flex:1">
+      <div class="leg-title">矢印の色 ＝ 目的地方向</div>
+      <div class="leg-row"><svg width="14" height="14"><rect width="14" height="14" rx="2" fill="#1a5276"/></svg><span>→ 横浜駅・みなとみらい</span></div>
+      <div class="leg-row"><svg width="14" height="14"><rect width="14" height="14" rx="2" fill="#c0392b"/></svg><span>→ 桜木町・関内</span></div>
+      <div class="leg-row"><svg width="14" height="14"><rect width="14" height="14" rx="2" fill="#1e8449"/></svg><span>→ 中華街・元町</span></div>
+      <div class="leg-row"><svg width="14" height="14"><rect width="14" height="14" rx="2" fill="#7d3c98"/></svg><span>→ 港北NT・センター北</span></div>
+      <div class="leg-row"><svg width="14" height="14"><rect width="14" height="14" rx="2" fill="#d35400"/></svg><span>→ 戸塚方面</span></div>
+    </div>
+    <div style="flex:1">
+      <div class="leg-title">出発地・目的地</div>
+      <div class="leg-row"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#c0392b" stroke="white" stroke-width="1.5"/></svg><span>主要出発地</span></div>
+      <div class="leg-row"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#1a5276" stroke="white" stroke-width="1.5"/></svg><span>主要目的地（駅・エリア）</span></div>
+      <div style="font-size:9px; margin-top:4px; color:#555;">対象：通勤・通学者<br>時間帯：平日 7:00〜9:00<br>出典：国勢調査・流動人口統計（推定）</div>
+    </div>
+  </div>
+
+  <div class="note">
+    ※ 矢印の太さと数値は移動人口の相対的な規模を示す推定値です。実測データではなく統計資料をもとにした模式的な表現です。<br>
+    ※ 地図タイル：国土地理院（地理院タイル）を使用
+  </div>
+  <div class="footer-line">
+    <span>主題図　横浜市中心部　朝の人口移動　　氏名：＿＿＿＿＿＿＿＿＿＿</span>
+    <span>作成日：＿＿年＿＿月＿＿日</span>
+  </div>
+</div>
+
+<script>
+const map = L.map('map', {
+  center: [35.435, 139.635],
+  zoom: 13,
+  zoomControl: true,
+  attributionControl: true
+});
+L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+  attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
+  maxZoom: 18
+}).addTo(map);
+
+const places = {
+  yokohama:    [35.4658, 139.6225],
+  sakuragicho: [35.4502, 139.6317],
+  kannai:      [35.4436, 139.6384],
+  chinatown:   [35.4436, 139.6490],
+  minatomirai: [35.4574, 139.6367],
+  minamiota:   [35.4162, 139.6178],
+  makita:      [35.4078, 139.6180],
+  idogaya:     [35.4039, 139.6147],
+  gumyoji:     [35.3968, 139.6085],
+  kouhoku:     [35.5430, 139.5980],
+  totsuka:     [35.3980, 139.5905],
+  koganecho:   [35.4299, 139.6274],
+};
+
+function makeIcon(color, size) {
+  size = size || 12;
+  return L.divIcon({
+    className: '',
+    html: '<div style="width:'+size+'px;height:'+size+'px;background:'+color+';border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>',
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2]
+  });
+}
+
+var destMarkers = [
+  [places.yokohama,    '横浜駅',       '#1a5276', 'top'],
+  [places.sakuragicho, '桜木町',       '#1a5276', 'right'],
+  [places.kannai,      '関内',         '#1a5276', 'bottom'],
+  [places.chinatown,   '中華街・元町', '#1a5276', 'right'],
+  [places.minatomirai, 'みなとみらい', '#1a5276', 'top'],
+];
+destMarkers.forEach(function(d) {
+  L.marker(d[0], {icon: makeIcon(d[2], 14)})
+    .bindTooltip('<b style="color:'+d[2]+'">'+d[1]+'</b>', {permanent:true, direction:d[3], className:'flow-label'})
+    .addTo(map);
+});
+
+var srcMarkers = [
+  [places.minamiota, '南太田',   '#c0392b', 'left'],
+  [places.makita,    '蒔田',     '#c0392b', 'left'],
+  [places.idogaya,   '井土ヶ谷', '#c0392b', 'left'],
+  [places.gumyoji,   '弘明寺',   '#c0392b', 'bottom'],
+  [places.koganecho, '黄金町',   '#c0392b', 'left'],
+];
+srcMarkers.forEach(function(d) {
+  L.marker(d[0], {icon: makeIcon(d[2], 12)})
+    .bindTooltip('<b style="color:'+d[2]+'">'+d[1]+'</b>', {permanent:true, direction:d[3], className:'flow-label'})
+    .addTo(map);
+});
+L.marker(places.kouhoku, {icon: makeIcon('#7d3c98', 14)})
+  .bindTooltip('<b style="color:#7d3c98">港北NT・センター北</b>', {permanent:true, direction:'top', className:'flow-label'}).addTo(map);
+L.marker(places.totsuka, {icon: makeIcon('#d35400', 12)})
+  .bindTooltip('<b style="color:#d35400">戸塚</b>', {permanent:true, direction:'left', className:'flow-label'}).addTo(map);
+
+// ===== Canvas矢印描画 =====
+var canvas = document.getElementById('arrow-canvas');
+var ctx = canvas.getContext('2d');
+
+var flows = [
+  { from: places.minamiota,   to: places.yokohama,    color:'#1a5276', w:20, label:'約２万人',   curve: 0.30 },
+  { from: places.minamiota,   to: places.sakuragicho, color:'#c0392b', w:15, label:'約1.5万人',  curve:-0.22 },
+  { from: places.minamiota,   to: places.chinatown,   color:'#1e8449', w:12, label:'約1.2万人',  curve:-0.10 },
+  { from: places.koganecho,   to: places.yokohama,    color:'#1a5276', w: 9, label:'約8千人',    curve: 0.35 },
+  { from: places.koganecho,   to: places.sakuragicho, color:'#c0392b', w: 7, label:'約6千人',    curve:-0.12 },
+  { from: places.idogaya,     to: places.sakuragicho, color:'#c0392b', w: 9, label:'約8千人',    curve:-0.28 },
+  { from: places.makita,      to: places.kannai,      color:'#1e8449', w: 7, label:'約6千人',    curve:-0.10 },
+  { from: places.gumyoji,     to: places.yokohama,    color:'#1a5276', w: 6, label:'約5千人',    curve: 0.28 },
+  { from: places.kouhoku,     to: places.yokohama,    color:'#7d3c98', w:11, label:'約1万人',    curve: 0.22 },
+  { from: places.kouhoku,     to: places.minatomirai, color:'#7d3c98', w: 8, label:'約7千人',    curve:-0.15 },
+  { from: places.totsuka,     to: places.yokohama,    color:'#d35400', w: 8, label:'約7千人',    curve: 0.22 },
+  { from: places.totsuka,     to: places.sakuragicho, color:'#d35400', w: 5, label:'約4千人',    curve:-0.12 },
+];
+
+function ll2px(latlng) {
+  return map.latLngToContainerPoint(L.latLng(latlng[0], latlng[1]));
+}
+
+function drawArrow(fx, fy, tx, ty, color, w, label, curve) {
+  // 制御点
+  var dx = tx - fx, dy = ty - fy;
+  var cx = (fx+tx)/2 - dy * curve;
+  var cy = (fy+ty)/2 + dx * curve;
+
+  // 終点を矢頭の長さ分だけ手前に
+  var headLen = w * 2.8;
+  // ベジェ曲線終点方向ベクトル（t=1付近の接線）
+  var tdx = tx - cx, tdy = ty - cy;
+  var tlen = Math.sqrt(tdx*tdx + tdy*tdy);
+  var ux = tdx/tlen, uy = tdy/tlen;
+  var ex = tx - ux * headLen * 0.6;
+  var ey = ty - uy * headLen * 0.6;
+
+  ctx.save();
+  ctx.globalAlpha = 0.82;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // ベジェ曲線
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.quadraticCurveTo(cx, cy, ex, ey);
+  ctx.stroke();
+
+  // 矢頭（塗りつぶし三角形）
+  var angle = Math.atan2(ty - cy, tx - cx);
+  var hw = w * 1.4; // 矢頭の幅
+  ctx.globalAlpha = 0.90;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(tx, ty);
+  ctx.lineTo(
+    tx - headLen * Math.cos(angle) + hw * Math.sin(angle),
+    ty - headLen * Math.sin(angle) - hw * Math.cos(angle)
+  );
+  ctx.lineTo(
+    tx - headLen * Math.cos(angle) - hw * Math.sin(angle),
+    ty - headLen * Math.sin(angle) + hw * Math.cos(angle)
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  // ラベル（曲線の1/4地点付近）
+  if (label) {
+    var t = 0.38;
+    var lx = (1-t)*(1-t)*fx + 2*(1-t)*t*cx + t*t*tx;
+    var ly = (1-t)*(1-t)*fy + 2*(1-t)*t*cy + t*t*ty;
+
+    ctx.globalAlpha = 1.0;
+    ctx.font = 'bold 12px "Hiragino Mincho ProN","Yu Mincho",serif';
+    var tw2 = ctx.measureText(label).width;
+    var pad = 4;
+    // 背景
+    ctx.fillStyle = 'rgba(255,255,255,0.93)';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, lx - tw2/2 - pad, ly - 10, tw2 + pad*2, 18, 3);
+    ctx.fill();
+    ctx.stroke();
+    // テキスト
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, lx, ly);
+  }
+
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h);
+  ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r);
+  ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+function redraw() {
+  var mapDiv = document.getElementById('map');
+  var w = mapDiv.offsetWidth;
+  var h = mapDiv.offsetHeight;
+  canvas.width = w;
+  canvas.height = h;
+  ctx.clearRect(0, 0, w, h);
+
+  flows.forEach(function(f) {
+    var fp = ll2px(f.from);
+    var tp = ll2px(f.to);
+    drawArrow(fp.x, fp.y, tp.x, tp.y, f.color, f.w, f.label, f.curve);
+  });
+}
+
+map.on('moveend', redraw);
+map.on('zoomend', redraw);
+map.on('move',    redraw);
+map.on('zoom',    redraw);
+
+// 地図タイル読込後に描画
+map.on('load', redraw);
+setTimeout(redraw, 500);
+setTimeout(redraw, 1200);
+</script>
+</body>
+</html>
